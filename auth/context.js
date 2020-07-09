@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import api from "./axios";
 import jwt from "jwt-decode";
+import cogoToast from "cogo-toast";
 import Router from "next/router";
 import { getCookieFromBrowser, removeCookie, setCookie } from "./cookies";
 const AuthContext = createContext({});
@@ -13,10 +14,18 @@ export const AuthProvider = ({ children }) => {
     async function loadUserFromCookies() {
       const token = getCookieFromBrowser("token");
       if (token) {
-        api.defaults.headers.Authorization = `Bearer ${token}`;
-        const userData = jwt(token);
-        const { data: user } = await api.get(`/api/user/${userData._id}`);
-        if (user) setUser(user);
+        try {
+          api.defaults.headers.Authorization = `Bearer ${token}`;
+          const userData = jwt(token);
+          const { data: user } = await api.get(`/api/user/${userData._id}`);
+          if (user) setUser(user);
+        } catch (e) {
+          if (401 === e.response.status) {
+            removeCookie("token");
+            setUser(null);
+            cogoToast.error("Session expiré, veuillez vous reconnecter");
+          }
+        }
       }
       setLoading(false);
     }
